@@ -1,0 +1,125 @@
+"""import calendar
+from django.utils import timezone
+from rest_framework.decorators import api_view
+from rest_framework import status
+from rest_framework.response import Response
+from django.db.models import Sum, Avg, Count
+from Fin_tutor.main.models import Event, User
+from django.shortcuts import get_object_or_404
+from datetime import datetime, timedelta
+
+
+
+@api_view(['POST'])
+def most_profitable_student_month(request):
+    data = request.data
+    tutor = get_object_or_404(User, username=data['tutor_login'])
+    events = Event.objects.filter(is_payed=True, tutor_id=tutor.id)
+    for event in events:
+        if not (int(event.date[3:5]) == data['month'] and int(event.date[6:]) == data['year']):
+            print(event.id)
+            events = events.exclude(id=event.id)
+    profit_by_student = events.values('student_id').annotate(total_profit=Sum('price'))
+    biggest_student = profit_by_student.order_by('-total_profit').first()
+    student = get_object_or_404(User, id=biggest_student['student_id'])
+    resp = {
+        "total_earning": biggest_student['total_profit'],
+        "name": student.first_name,
+        "surname": student.last_name
+    }
+    return Response(resp, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+def least_profitable_student_month(request):
+    data = request.data
+    tutor = get_object_or_404(User, username=data['tutor_login'])
+    events = Event.objects.filter(is_payed=True, tutor_id=tutor.id)
+    for event in events:
+        if not (int(event.date[3:5]) == data['month'] and int(event.date[6:]) == data['year']):
+            print(event.id)
+            events = events.exclude(id=event.id)
+    profit_by_student = events.values('student_id').annotate(total_profit=Sum('price'))
+    least_student = profit_by_student.order_by('-total_profit').last()
+    student = get_object_or_404(User, id=least_student['student_id'])
+    resp = {
+        "total_earning": least_student['total_profit'],
+        "name": student.first_name,
+        "surname": student.last_name
+    }
+    return Response(resp, status=status.HTTP_200_OK)
+
+
+def average_lesson_price(request):
+    # Средняя цена занятия
+    average_price = Event.objects.filter(is_payed=True).aggregate(avg_price=Avg('price'))
+    return average_price['avg_price']
+
+
+def most_profitable_month_year(year):
+    # Наиболее прибыльный месяц за год
+    start_date = datetime(year, 1, 1)
+    end_date = start_date.replace(year=year + 1) - timedelta(days=1)
+    profit_by_month = Event.objects.filter(date__gte=start_date, date__lte=end_date, is_payed=True).values(
+        'date__month').annotate(total_profit=Sum('price'))
+    most_profitable_month = profit_by_month.order_by('-total_profit').first()
+    return most_profitable_month
+
+
+def least_profitable_month_year(year):
+    # Наименее прибыльный месяц за год
+    start_date = datetime(year, 1, 1)
+    end_date = start_date.replace(year=year + 1) - timedelta(days=1)
+    profit_by_month = Event.objects.filter(date__gte=start_date, date__lte=end_date, is_payed=True).values(
+        'date__month').annotate(total_profit=Sum('price'))
+    least_profitable_month = profit_by_month.order_by('total_profit').first()
+    return least_profitable_month
+
+
+def average_earning_per_month_last_year():
+    # Средний заработок за месяц за последние 12 месяцев
+    end_date = timezone.now()
+    start_date = end_date - timedelta(days=365)
+    profit_by_month = Event.objects.filter(date__gte=start_date, date__lte=end_date, is_payed=True).values(
+        'date__month').annotate(total_profit=Sum('price'))
+    average_earning = profit_by_month.aggregate(avg_earning=Avg('total_profit'))
+    return average_earning['avg_earning']
+
+@api_view(['POST'])
+def total_earning(request):
+    # Заработок за все время
+    data = request.data
+    tutor = get_object_or_404(User, username=data['tutor_login'])
+    events = Event.objects.filter(is_payed=True, tutor_id=tutor.id)
+    for event in events:
+        events = events.exclude(id=event.id)
+    profit_by_student = events.values('student_id').annotate(total_profit=Sum('price'))
+    total_earning = Sum(profit_by_student.order_by('-total_profit'))
+    resp = {
+        "total_earning": total_earning,
+    }
+    return Response(resp, status=status.HTTP_200_OK)
+
+
+def last_month():
+    # Заработок за последний месяц
+    end_date = timezone.now()
+    start_date = end_date - timedelta(days=30)
+    earning_last_month = Event.objects.filter(date__gte=start_date, date__lte=end_date, is_payed=True).aggregate(
+        total_earning=Sum('price'))
+    return earning_last_month['total_earning']
+
+
+def average_hours_per_week_last_3_months():
+    # Среднее количество часов работы в неделю за последние 3 месяца
+    end_date = timezone.now()
+    start_date = end_date - timedelta(days=90)
+    total_hours_worked = Event.objects.filter(date__gte=start_date, date__lte=end_date, is_payed=True).aggregate(
+        total_length=Sum('length'))
+    weeks = (end_date - start_date).days / 7
+    return total_hours_worked['total_length'] / weeks
+
+
+
+
+"""
